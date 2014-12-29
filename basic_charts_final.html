@@ -6,58 +6,169 @@
     <script src="http://dimplejs.org/dist/dimple.v2.0.0.min.js"></script>
     
     <style>
-      circle.dimple-series-1 {
-        fill: red;
-      }
-
       h2 {
+        font-family: arial;
+        color: black;
         text-align: center;
       }
+
+      .axis {
+        font-family: arial;
+        font-size: .6em;
+      }
+
+      path {
+        fill: none;
+        stroke: black;
+        stroke-width: 2px;
+      }
+
+      .tick {
+        fill: none;
+        stroke: black;
+      }
+
+      circle {
+        opacity: 0.4;
+        stroke: none;
+      }
+
+      .line_plot {
+        fill: none;
+        stroke: #4eb0bb;
+        stroke-width: 1px;
+      }
+
     </style>
 
     <script type="text/javascript">
+
+
       function draw(data) {
       
-      /*
-        D3.js setup code
-      */
 
-          "use strict";
-          var margin = 75,
+          // "strict" is a particular form of JS we're using here
+
+          "use strict";                 
+
+
+          // set some attributes to use in making the chart:
+
+          var margin = 75,              
               width = 1400 - margin,
-              height = 600 - margin;
+              height = 600 - margin,
+              radius = 4,
+              colour = 'blue';
 
-          var svg = d3.select("body")
+
+          // append h2 element to page body for the chart's title
+
+          d3.select("body")             
+            .append("h2")
+            .text("World Cup Attendance");
+
+
+          // add an SVG element as the "canvas" for the chart, if you will
+
+          var svg = d3.select("body")   
             .append("svg")
               .attr("width", width + margin)
               .attr("height", height + margin)
             .append('g')
                 .attr('class','chart');
 
-      /*
-        Dimple.js Chart construction code
-      */
 
-          var myChart = new dimple.chart(svg, data);
-          var x = myChart.addTimeAxis("x", "year"); 
-          myChart.addMeasureAxis("y", "attendance");
-          x.dateParseFormat = "%Y";
-          x.tickFormat = "%Y";
-          x.timeInterval = 4;
-          myChart.addSeries(null, dimple.plot.line);
-          myChart.addSeries(null, dimple.plot.scatter);
-          myChart.draw();
+          // create and bind our data to SVG circle elements in the page using Joins and .enter(), the magic of D3
+
+          d3.select("svg")        // returns the SVG element on the page, not bound to any data
+            .selectAll("circle")  // returns an empty selection
+            .data(data)           // returns an array of placeholder elements to which to bind data
+            .enter()              // returns an array of JS objects with a __data__ field
+            .append("circle")     // returns an array of svg circle element with bound __data__
+
+
+          // for both axes, return the range of values in date column / attendance column
+
+          var time_extent = d3.extent(data, function(d) { 
+              return d['date'];
+          });
+
+          var count_extent = d3.extent(data, function(d) { 
+              return d['attendance'];
+          });
+
+
+          // mapping domains for our date values / attendance values to the range of available pixels of the SVG's x & y axes
+
+          var time_scale = d3.time.scale() 
+            .range([margin, width])
+            .domain(time_extent); 
+
+          var count_scale = d3.scale.linear() 
+            .range([height, margin]) // note that with SVG coordinates, the origin is at top left
+            .domain(count_extent); 
+
+
+          // define D3 axes properties
+
+          var time_axis = d3.svg.axis()
+            .scale(time_scale)
+            .ticks(d3.time.years, 2);
+
+          var count_axis = d3.svg.axis()
+            .scale(count_scale)
+            .orient("left");
+
+
+          // append SVG to page for both axes
+
+          d3.select("svg")
+            .append('g')
+            .attr('class', 'x axis')
+            .attr('transform', "translate(0," + height + ")")
+            .call(time_axis);
+
+          d3.select("svg")
+            .append('g')
+            .attr('class', 'y axis')
+            .attr('transform', "translate(" + margin + ",0)") // SVG origin at top left, ya remember?
+            .call(count_axis);
+
+
+          //change each circle element's x and y values according to its date and attendence, plus add colour and radius
+
+          d3.selectAll("circle")
+            .attr('cx', function(d) {
+              return time_scale(d['date']); // accessor function goes over each row of data, taking the scale object and passing in the the column that corresponds to x axis. scale object converts it from JS date object to pixel value
+            })
+            .attr('cy', function(d) {
+              return count_scale(d['attendance']);
+            })
+            .attr('r', radius)
+            .attr('fill', colour);
+
         };
 
     </script>
   </head>
 <body>
   <script type="text/javascript">
-  /*
-    Use D3 (not dimple.js) to load the TSV file
-    and pass the contents of it to the draw function
-    */
-  d3.tsv("world_cup.tsv", draw);
+
+
+  // pattern matching: dates in data file follow convention 27-05-1994 (16:00 h)
+
+  format = d3.time.format("%d-%m-%Y (%H:%M h)");  
+
+
+  // use D3 to load the TSV file and pass the contents of it to the draw function
+
+  d3.tsv("world_cup_geo.tsv", function(d) { // on loading, we pass each row of tsv to transformer function
+    d['date'] = format.parse(d['date']); // overwriting the date column (initially a string) with a JS date object
+    d['attendance'] = +d['attendance']; // converting attendance column from string to int, using JS's unary operator
+    return d; //remember to return this!
+  }, draw); // call draw function in head
+
   </script>
+
 </body>
 </html>
