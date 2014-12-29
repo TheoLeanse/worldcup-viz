@@ -39,6 +39,10 @@
         stroke-width: 1px;
       }
 
+      .legend {
+        font-family: arial;
+      }
+
     </style>
 
     <script type="text/javascript">
@@ -58,7 +62,9 @@
               width = 1400 - margin,
               height = 600 - margin,
               radius = 4,
-              colour = 'blue';
+              home_game_radius = 6,
+              colour = 'blue',
+              home_game_colour = 'red';
 
 
           // append h2 element to page body for the chart's title
@@ -144,10 +150,66 @@
             .attr('cy', function(d) {
               return count_scale(d['attendance']);
             })
-            .attr('r', radius)
-            .attr('fill', colour);
+            .attr('r', function(d) {
+                if (d['home'] === d['team1'] || d['home'] === d['team2']) {
+                    return home_game_radius;
+                } else {
+                    return radius;
+              }
+            })
+            .attr('fill', function(d) {
+                if (d['home'] === d['team1'] || d['home'] === d['team2']) {
+                    return home_game_colour;
+                } else {
+                    return colour;
+                }
+            });
 
-        };
+
+          // bind data to two SVG elements in preparation for adding legend properties
+
+          var legend = svg.append("g")
+            .attr("class", "legend")
+            .attr("transform", "translate(" + (width - 100) + "," + 20 + ")")
+            .selectAll("g")
+            .data(["Home Team", "Others"]) // bind data (here, just a JS array with two strings in it) to SVG element
+            .enter().append("g");
+
+
+          // add circles to legend
+
+          legend.append("circle")
+            .attr("cy", function(d, i) {
+                return i * 30;
+            })
+            .attr("r", function(d) {
+                if (d === 'Home Team') {
+                    return home_game_radius;
+                } else {
+                    return radius;
+                }
+            })
+            .attr("fill", function(d) {
+                if (d === "Home Team") {
+                    return home_game_colour;
+                } else { 
+                    return colour;
+                }     
+            });
+
+
+          // add text
+
+          legend.append("text")
+            .attr("y", function(d, i) {
+                return i * 30 + 5;
+            })
+            .attr("x", radius * 5)
+            .text(function(d) {
+                return d;
+            });
+
+        }; // end of draw function
 
     </script>
   </head>
